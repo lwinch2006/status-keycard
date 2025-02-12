@@ -489,7 +489,7 @@ public class KeycardTest {
     }
 
     // Wrong P1
-    response = cmdSet.unpair((byte) 5);
+    response = cmdSet.unpair(KeycardApplet.PAIRING_MAX_CLIENT_COUNT);
     assertEquals(0x6A86, response.getSw());
 
     // Unpair spare keyset
