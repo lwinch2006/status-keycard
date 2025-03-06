@@ -706,7 +706,7 @@ public class KeycardApplet extends Applet {
 
     short pubLen = masterPublic.getW(apduBuffer, (short) 0);
     crypto.sha256.doFinal(apduBuffer, (short) 0, pubLen, keyUID, (short) 0);
-    Util.arrayCopyNonAtomic(keyUID, (short) 0, apduBuffer, SecureChannel.SC_OUT_OFFSET, KEY_UID_LENGTH);
+    Util.arrayCopy(keyUID, (short) 0, apduBuffer, SecureChannel.SC_OUT_OFFSET, KEY_UID_LENGTH);
   }
 
   /**
