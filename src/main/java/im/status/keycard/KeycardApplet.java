@@ -691,17 +691,15 @@ public class KeycardApplet extends Applet {
         break;
     }
 
-    pinlessPathLen = 0;
-    generateKeyUIDAndRespond(apdu, apduBuffer);
+    secureChannel.respond(apdu, KEY_UID_LENGTH, ISO7816.SW_NO_ERROR);
   }
 
   /**
    * Generates the Key UID from the current master public key and responds to the command.
    *
-   * @param apdu the JCRE-owned APDU object.
    * @param apduBuffer the APDU buffer
    */
-  private void generateKeyUIDAndRespond(APDU apdu, byte[] apduBuffer) {
+  private void generateKeyUIDAndPrepareResponse(byte[] apduBuffer) {
     if (isExtended) {
       crypto.sha256.doFinal(masterChainCode, (short) 0, CHAIN_CODE_SIZE, altChainCode, (short) 0);
     }
@@ -709,7 +707,6 @@ public class KeycardApplet extends Applet {
     short pubLen = masterPublic.getW(apduBuffer, (short) 0);
     crypto.sha256.doFinal(apduBuffer, (short) 0, pubLen, keyUID, (short) 0);
     Util.arrayCopyNonAtomic(keyUID, (short) 0, apduBuffer, SecureChannel.SC_OUT_OFFSET, KEY_UID_LENGTH);
-    secureChannel.respond(apdu, KEY_UID_LENGTH, ISO7816.SW_NO_ERROR);
   }
 
   /**
@@ -718,6 +715,7 @@ public class KeycardApplet extends Applet {
    */
   private void resetKeyStatus() {
     keyPathLen = 0;
+    pinlessPathLen = 0;
   }
 
   /**
@@ -772,6 +770,7 @@ public class KeycardApplet extends Applet {
     }
 
     resetKeyStatus();
+    generateKeyUIDAndPrepareResponse(apduBuffer);
     JCSystem.commitTransaction();
   }
 
@@ -801,6 +800,7 @@ public class KeycardApplet extends Applet {
     masterPublic.setW(apduBuffer, (short) 0, pubLen);
 
     resetKeyStatus();
+    generateKeyUIDAndPrepareResponse(apduBuffer);
     JCSystem.commitTransaction();
   }
 
@@ -1093,8 +1093,7 @@ public class KeycardApplet extends Applet {
     crypto.random.generateData(apduBuffer, ISO7816.OFFSET_CDATA, BIP39_SEED_SIZE);
 
     loadSeed(apduBuffer);
-    pinlessPathLen = 0;
-    generateKeyUIDAndRespond(apdu, apduBuffer);
+    secureChannel.respond(apdu, KEY_UID_LENGTH, ISO7816.SW_NO_ERROR);
   }
 
   /**
