@@ -17,6 +17,8 @@ A good place to start is our documentation site: https://keycard.tech/docs/
 
 You can also join the discussion about this project on our discord channel https://discord.gg/uJAXk7jFhZ 
 
+Keycard is at the heart of several projects, check the ecosystem of projects here: https://github.com/keycard-tech/keycard-ecosystem-projects/
+
 If you just want to use the Keycard as your hardware wallet there are currently three apps supporting it
 
 1. Status [[Android](https://play.google.com/store/apps/details?id=im.status.ethereum)][[iOS](https://apps.apple.com/us/app/status-private-communication/id1178893006)]
