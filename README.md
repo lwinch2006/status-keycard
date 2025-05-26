@@ -13,9 +13,9 @@ The most obvious case for integration of Keycard is crypto wallets (ETH, BTC, et
 
 # Where to start?
 
-A good place to start is our documentation site https://keycard.tech/docs/
+A good place to start is our documentation site: https://keycard.tech/docs/
 
-You can also join the dicussion about this project on Status channel: https://get.status.im/chat/public/status-keycard
+You can also join the discussion about this project on our discord channel https://discord.gg/uJAXk7jFhZ 
 
 If you just want to use the Keycard as your hardware wallet there are currently three apps supporting it
 
@@ -27,9 +27,9 @@ If you just want to use the Keycard as your hardware wallet there are currently 
 
 Anyone is welcome to contribute to Keycard! 
 
-Most of our communication about the project is going on here: https://get.status.im/chat/public/status-keycard
+Should you wish to work on an issue, please claim it first by commenting on the GitHub issue that you want to work on it. This is to prevent duplicated efforts from contributors on the same issue. 
 
-Should you wish to work on an issue, please claim it first by commenting on the GitHub issue that you want to work on it. This is to prevent duplicated efforts from contributors on the same issue.
+We also suggest you join our discord server https://discord.gg/uJAXk7jFhZ 
 
 # How to build the project?
 
@@ -86,8 +86,8 @@ Best performance is achieved if the card supports:
 
 # Other related repositories
 
-Java SDK for Android and Desktop https://github.com/status-im/status-keycard-java
+Java SDK for Android and Desktop https://github.com/keycard-tech/status-keycard-java
 
-Swift SDK for iOS13 and above https://github.com/status-im/Keycard.swift
+Swift SDK for iOS13 and above https://github.com/keycard-tech/Keycard.swift
 
-Keycard CLI for Desktop https://github.com/status-im/keycard-cli
+Keycard CLI for Desktop https://github.com/keycard-tech/keycard-cli
