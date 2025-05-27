@@ -13,25 +13,21 @@ The most obvious case for integration of Keycard is crypto wallets (ETH, BTC, et
 
 # Where to start?
 
-A good place to start is our documentation site: https://keycard.tech/docs/
+A good place to start is our [documentation site](https://keycard.tech/docs/)
 
-You can also join the discussion about this project on our discord channel https://discord.gg/uJAXk7jFhZ 
+Keycard is a public good — contributions are welcome and highly encouraged!
 
-Keycard is at the heart of several projects, check the ecosystem of projects here: https://github.com/keycard-tech/keycard-ecosystem-projects/
+You can also join the discussion about this project on our [discord channel](https://discord.gg/uJAXk7jFhZ)
+
+Keycard is at the center of several projects, check the [ecosystem of projects](https://github.com/keycard-tech/keycard-ecosystem-projects/) or [good first issues](https://github.com/orgs/keycard-tech/projects/1/views/2?filterQuery=good+first+issue)
+
+Should you wish to work on an issue, please claim it first by commenting on the GitHub issue that you want to work on it. This is to prevent duplicated efforts from contributors on the same issue. 
 
 If you just want to use the Keycard as your hardware wallet there are currently three apps supporting it
 
 1. Status [[Android](https://play.google.com/store/apps/details?id=im.status.ethereum)][[iOS](https://apps.apple.com/us/app/status-private-communication/id1178893006)]
 2. WallETH [[Android](https://play.google.com/store/apps/details?id=org.walleth)]
 3. Enno Walet https://ennowallet.com/
-
-# How to contribute? 
-
-Anyone is welcome to contribute to Keycard! 
-
-Should you wish to work on an issue, please claim it first by commenting on the GitHub issue that you want to work on it. This is to prevent duplicated efforts from contributors on the same issue. 
-
-We also suggest you join our discord server https://discord.gg/uJAXk7jFhZ 
 
 # How to build the project?
 
