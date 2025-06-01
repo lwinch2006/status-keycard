@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="JavaCardApplets" default="BuildKeycardApplet" basedir=".">
+    <get src="https://github.com/martinpaljak/ant-javacard/releases/latest/download/ant-javacard.jar" dest="." skipexisting="true"/>
+    <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="ant-javacard.jar"/>
+    <target name="BuildKeycardApplet" description="Building Keycard CAP file">
+        <property environment="env"/>
+        <javacard jckit="${env.HOME}/Downloads/002_projects/tools/smartcard/sdk/oracle_javacard_sdks/jc320v24.0_kit">
+            <cap targetsdk="${env.HOME}/Downloads/002_projects/tools/smartcard/sdk/oracle_javacard_sdks/jc304_kit" package="im.status.keycard" aid="A0:00:00:08:04:00:01" output="cap-files/dka_fork_im_status_keycard_v3.1_jc304.cap" sources="../src/main/java/im/status/keycard" version="3.1">
+                <applet class="KeycardApplet" aid="A0:00:00:08:04:00:01:01"/>
+                <applet class="NDEFApplet"    aid="A0:00:00:08:04:00:01:02"/>
+                <applet class="CashApplet"    aid="A0:00:00:08:04:00:01:03"/>
+                <applet class="IdentApplet"   aid="A0:00:00:08:04:00:01:04"/>
+            </cap>
+        </javacard>
+    </target>
+</project>

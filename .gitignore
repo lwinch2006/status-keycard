@@ -5,8 +5,10 @@
 
 # Gradle output
 /.gradle
-/build
 /bin
 /gradle.properties
 buildSrc/build
 buildSrc/.gradle
+
+# Misc folders and files
+/build/cap-files/
