@@ -39,12 +39,16 @@ Testing is done with JUnit and performed either on a real card or on [jCardSim](
 Although the tests are comprehensive, debugging on the real card is not easy because raw APDUs are not shown in the test 
 log and there is no way to set breakpoints in the applet. 
 
-In order to test with the simulator with an IDE, you need to pass these additional parameters to the JVM
-
+In order to test with the simulator with an IDE, you need to:
+1. Pass these additional parameters to the JVM:  
 ```-noverify -Dim.status.keycard.test.target=simulator```
+2. Add ```im.status.keycard.test.target=simulator``` to gradle.properties
+
+Please skip installation step for the simulated card.
+
 
 ## Compilation
-1. Download and install the JavaCard 3.0.4 SDK from [Oracle](http://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javame-419430.html#java_card_kit-classic-3_0_4-rr-bin-do)
+1. Download and install the JavaCard 3.0.4 SDK from [Oracle](https://www.oracle.com/java/technologies/javacard-downloads.html#sdk), or alternatively from [jc304_kit](https://github.com/martinpaljak/oracle_javacard_sdks/tree/master/jc304_kit)
 2. Clone the Github repo for our fork of [jCardSim](https://github.com/status-im/jcardsim)
 3. Create a gradle.properties (see below for an example)
 4. Run `./gradlew convertJavacard`
