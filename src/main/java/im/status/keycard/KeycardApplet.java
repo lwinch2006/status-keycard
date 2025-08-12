@@ -47,6 +47,8 @@ public class KeycardApplet extends Applet {
   static final short CHAIN_CODE_SIZE = 32;
   static final short KEY_UID_LENGTH = 32;
   static final short BIP39_SEED_SIZE = CHAIN_CODE_SIZE * 2;
+  static final short BIP32_MIN_SEED_SIZE = 16;
+  static final short BIP32_MAX_SEED_SIZE = BIP39_SEED_SIZE;
 
   static final byte GET_STATUS_P1_APPLICATION = 0x00;
   static final byte GET_STATUS_P1_KEY_PATH = 0x01;
@@ -775,19 +777,19 @@ public class KeycardApplet extends Applet {
   }
 
   /**
-   * Called internally by the loadKey method to load a key from a sequence of 64 bytes, supposedly generated according
-   * to the algorithms described in the BIP39 specifications. This way of loading keys is only supported when public
-   * key derivation is available. If not, the public key must be derived off-card and the key must be formatted in the
-   * TLV format processed by the loadKeyPair method.
+   * Called internally by the loadKey method to load a key from a sequence up to 64 bytes, possibly generated according
+   * to the algorithms described in the BIP39 or SLIP39 specifications. 
    *
    * @param apduBuffer the APDU buffer
    */
   private void loadSeed(byte[] apduBuffer) {
-    if (apduBuffer[ISO7816.OFFSET_LC] != BIP39_SEED_SIZE) {
+    short seedLen = (short) apduBuffer[ISO7816.OFFSET_LC];
+
+    if ((seedLen < BIP32_MIN_SEED_SIZE) || (seedLen > BIP32_MAX_SEED_SIZE)) {
       ISOException.throwIt(ISO7816.SW_WRONG_DATA);
     }
 
-    crypto.bip32MasterFromSeed(apduBuffer, (short) ISO7816.OFFSET_CDATA, BIP39_SEED_SIZE, apduBuffer, (short) ISO7816.OFFSET_CDATA);
+    crypto.bip32MasterFromSeed(apduBuffer, (short) ISO7816.OFFSET_CDATA, seedLen, apduBuffer, (short) ISO7816.OFFSET_CDATA);
 
     JCSystem.beginTransaction();
     isExtended = true;
