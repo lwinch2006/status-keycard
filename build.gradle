@@ -1,5 +1,7 @@
 apply plugin: 'javacard'
 
+project.ext.set("com.fidesmo.gradle.javacard.home", "./sdks/jc304_kit")
+
 buildscript {
   repositories {
     maven { url 'http://releases.marmeladburk.fidesmo.com/' }
