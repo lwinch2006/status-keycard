@@ -45,7 +45,7 @@ Run `./gradlew convertJavacard`
 
 ## Installation
 
-Make sure the card you are trying to use is using the T=1 protocol and the default GlobalPlatform keys (this is usually the case with cards sold online), otherwise this installation method will not work.
+Make sure the card you are trying to use is using the T=1 protocol and SCP02 with either the GlobalPlatform default keys (404142434445464748494a4b4c4d4e4f) or the Keycard development cards key (c212e073ff8b4bbfaff4de8ab655221f), otherwise this installation method will not work and you will need to use an external tool like [GlobalPlatformPro](https://github.com/martinpaljak/GlobalPlatformPro).
 
 1. Disconnect all card reader terminals from the system, except the one with the card where you want to install the applet
 2. Run `./gradlew install`

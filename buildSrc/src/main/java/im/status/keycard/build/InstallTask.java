@@ -57,7 +57,7 @@ public class InstallTask extends DefaultTask {
       logger.info("Selecting the ISD");
       cmdSet.select().checkOK();
       logger.info("Opening a SecureChannel");
-      cmdSet.openSecureChannel();
+      cmdSet.openSecureChannel(false);
       logger.info("Deleting the old instances and package (if present)");
       cmdSet.deleteKeycardInstancesAndPackage();
       logger.info("Loading the new package");
