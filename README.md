@@ -31,35 +31,34 @@ If you just want to use the Keycard as your hardware wallet there are currently 
 
 # How to build the project?
 
-The project is built using Gradle with the [Fidesmo Javacard Gradle plugin](https://github.com/fidesmo/gradle-javacard).
-You can set the JavaCard HOME not only through the environment but also creating a gradle.properties file with the 
-property "com.fidesmo.gradle.javacard.home" set to the correct path.
+**YOU NEED OPENJDK11 TO BUILD THIS PROJECT**
 
-Testing is done with JUnit and performed either on a real card or on [jCardSim](https://github.com/status-im/jcardsim). 
-Although the tests are comprehensive, debugging on the real card is not easy because raw APDUs are not shown in the test 
-log and there is no way to set breakpoints in the applet. 
+make sure your `JAVA_HOME` environment variable points to a working OpenJDK 11 installation. This is a prerequisite for all of the following steps.
 
-In order to test with the simulator with an IDE, you need to add ```im.status.keycard.test.target=simulator``` to gradle.properties
+## Get the source
 
-Please skip installation step for the simulated card.
-
+Clone this repository with `git clone --recurse-submodules https://github.com/keycard-tech/status-keycard`
 
 ## Compilation
-1. Download and install the JavaCard 3.0.4 SDK from [Oracle](https://www.oracle.com/java/technologies/javacard-downloads.html#sdk), or alternatively from [jc304_kit](https://github.com/martinpaljak/oracle_javacard_sdks/tree/master/jc304_kit)
-2. Clone the Github repo for our fork of [jCardSim](https://github.com/status-im/jcardsim)
-3. Create a gradle.properties (see below for an example)
-4. Run `./gradlew convertJavacard`
+
+Run `./gradlew convertJavacard`
 
 ## Installation
-1. Follow all steps from the Compilation phase (except the last one)
-2. Disconnect all card reader terminals from the system, except the one with the card where you want to install the applet
-3. Run `./gradlew install`
+
+Make sure the card you are trying to use is using the T=1 protocol and the default GlobalPlatform keys (this is usually the case with cards sold online), otherwise this installation method will not work.
+
+1. Disconnect all card reader terminals from the system, except the one with the card where you want to install the applet
+2. Run `./gradlew install`
 
 ## Testing
-1. Follow all steps from the Installation phase (except the last one)
-2. Make sure your JRE has the [JCE Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html)
-   installed. For more information check [here](https://stackoverflow.com/questions/41580489/how-to-install-unlimited-strength-jurisdiction-policy-files).
-3. Run `./gradlew test`
+
+Run `./gradlew test`
+
+if you want to test using the simulator instead of a real card, create a file named `gradle.properties` with the content:
+
+```im.status.keycard.test.target=simulator```
+
+before running the tests.
 
 # What kind of smartcards can I use? 
 
