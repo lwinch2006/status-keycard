@@ -15,13 +15,15 @@ import javax.smartcardio.*;
 import java.io.FileInputStream;
 import java.io.IOException;
 
+import apdu4j.pcsc.TerminalManager;
+
 public class InstallTask extends DefaultTask {
 
   @TaskAction
   public void install() {
     Logger logger = getLogger();
 
-    TerminalFactory tf = TerminalFactory.getDefault();
+    TerminalFactory tf = TerminalManager.getTerminalFactory();
     CardTerminal cardTerminal = null;
 
     try {

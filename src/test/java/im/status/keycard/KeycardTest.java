@@ -50,6 +50,8 @@ import java.util.Random;
 import static org.apache.commons.codec.digest.DigestUtils.sha256;
 import static org.junit.jupiter.api.Assertions.*;
 
+import apdu4j.pcsc.TerminalManager;
+
 @DisplayName("Test the Keycard Applet")
 public class KeycardTest {
   // Pairing key is KeycardTest
@@ -180,7 +182,7 @@ public class KeycardTest {
   }
 
   private static void openCardChannel() throws Exception {
-    TerminalFactory tf = TerminalFactory.getDefault();
+    TerminalFactory tf = TerminalManager.getTerminalFactory();
 
     for (CardTerminal t : tf.terminals().list()) {
       if (t.isCardPresent()) {
