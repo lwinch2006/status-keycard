@@ -5,6 +5,8 @@ import im.status.keycard.applet.KeycardCommandSet;
 import im.status.keycard.desktop.PCSCCardChannel;
 import im.status.keycard.globalplatform.GlobalPlatformCommandSet;
 import im.status.keycard.globalplatform.LoadCallback;
+import im.status.keycard.globalplatform.SecureChannel;
+import im.status.keycard.io.APDUCommand;
 import im.status.keycard.io.APDUException;
 import org.bouncycastle.util.encoders.Hex;
 import org.gradle.api.DefaultTask;
@@ -15,6 +17,7 @@ import org.gradle.api.tasks.TaskAction;
 import javax.smartcardio.*;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.security.SecureRandom;
 
 import apdu4j.pcsc.TerminalManager;
@@ -64,6 +67,7 @@ public class LockTask extends DefaultTask {
       cmdSet.select().checkOK();
       logger.info("Opening a SecureChannel");
       cmdSet.openSecureChannel(false);
+      
       logger.info("Changing SCP02 keys to random ones");
       SecureRandom rand = new SecureRandom();
       byte[] enck = new byte[16];
@@ -73,9 +77,18 @@ public class LockTask extends DefaultTask {
       byte[] deck = new byte[16];
       rand.nextBytes(deck);
       cmdSet.putSCP02Keys(enck, mack, deck, 0, 1).checkOK();
+      
+      logger.info("Switching to SECURED");
+      Field f = cmdSet.getClass().getDeclaredField("secureChannel");
+      f.setAccessible(true);
+      SecureChannel sc = (SecureChannel) f.get(cmdSet);
+      APDUCommand cmd = new APDUCommand(0x84, 0xf0, 0x80, 0x07, new byte[0]);
+      sc.send(cmd).checkSW(0x9000, 0x6985);
+      cmd = new APDUCommand(0x84, 0xf0, 0x80, 0x0f, new byte[0]);
+      sc.send(cmd).checkSW(0x9000, 0x6985);
     } catch (IOException e) {
       throw new GradleException("I/O error", e);
-    } catch (APDUException e) {
+    } catch (Exception e) {
       throw new GradleException(e.getMessage(), e);
     }
   }
