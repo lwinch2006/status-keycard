@@ -62,10 +62,9 @@ before running the tests.
 
 # What kind of smartcards can I use? 
 
-* The applet requires JavaCard 3.0.4 (with the addition of KeyAgreement.ALG_EC_SVDP_DH_PLAIN_XY
-) or later.
+* The applet requires JavaCard 3.0.5 or later.
 * The class byte of the APDU is not checked since there are no conflicting INS code.
-* The GlobalPlatform ISD keys are set to c212e073ff8b4bbfaff4de8ab655221f.
+* The GlobalPlatform ISD keys are set to 404142434445464748494a4b4c4d4e4f or c212e073ff8b4bbfaff4de8ab655221f.
 
 The algorithms the card must support are at least:
 * Cipher.ALG_AES_BLOCK_128_CBC_NOPAD
