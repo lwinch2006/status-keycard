@@ -4,6 +4,7 @@ import javacard.framework.*;
 import javacard.security.*;
 
 import static javacard.framework.ISO7816.OFFSET_P1;
+import static javacard.framework.ISO7816.OFFSET_P2;
 
 /**
  * The applet's main class. All incoming commands a processed by this class.
@@ -1058,7 +1059,7 @@ public class KeycardApplet extends Applet {
   private void factoryReset(APDU apdu) {
     byte[] apduBuffer = apdu.getBuffer();
 
-    if ((apduBuffer[OFFSET_P1] != FACTORY_RESET_P1_MAGIC) || (apduBuffer[ISO7816.OFFSET_P2] != FACTORY_RESET_P2_MAGIC)) {
+    if ((apduBuffer[OFFSET_P1] != FACTORY_RESET_P1_MAGIC) || (apduBuffer[OFFSET_P2] != FACTORY_RESET_P2_MAGIC)) {
       ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     }
 
@@ -1227,7 +1228,7 @@ public class KeycardApplet extends Applet {
     boolean publicOnly;
     boolean extendedPublic;
 
-    switch (apduBuffer[ISO7816.OFFSET_P2]) {
+    switch (apduBuffer[OFFSET_P2]) {
       case EXPORT_KEY_P2_PRIVATE_AND_PUBLIC:
         publicOnly = false;
         extendedPublic = false;
@@ -1328,24 +1329,34 @@ public class KeycardApplet extends Applet {
     }
 
     byte[] dst;
+    short outLen;
+    short off = (short) 1;
 
     switch (apduBuffer[OFFSET_P1]) {
       case STORE_DATA_P1_PUBLIC:
         dst = data;
+        outLen = Util.makeShort((byte) 0x00, dst[0]);
         break;
       case STORE_DATA_P1_NDEF:
         dst = SharedMemory.ndefDataFile;
+        outLen = (short) (Util.makeShort(dst[0], dst[1]) + 2);
+        //TODO: support output segmentation for NDEF
+        //off = (short) ((short) apduBuffer[OFFSET_P2] * 4);
+        off = (short) 0;
+        if (outLen > SecureChannel.SC_MAX_PLAIN_LENGTH) {
+          outLen = SecureChannel.SC_MAX_PLAIN_LENGTH;
+        }
         break;
       case STORE_DATA_P1_CASH:
         dst = SharedMemory.cashDataFile;
+        outLen = Util.makeShort((byte) 0x00, dst[0]);
         break;
       default:
         ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         return;
     }
 
-    short outLen = Util.makeShort((byte) 0x00, dst[0]);
-    Util.arrayCopyNonAtomic(dst, (short) 1, apduBuffer, SecureChannel.SC_OUT_OFFSET, outLen);
+    Util.arrayCopyNonAtomic(dst, off, apduBuffer, SecureChannel.SC_OUT_OFFSET, outLen);
 
     if (secureChannel.isOpen()) {
       secureChannel.respond(apdu, outLen, ISO7816.SW_NO_ERROR);
@@ -1368,30 +1379,35 @@ public class KeycardApplet extends Applet {
     }
 
     byte[] dst;
+    short dataLen = Util.makeShort((byte) 0x00, apduBuffer[ISO7816.OFFSET_LC]);
+    short off = (short) 0;
+    short inOff = ISO7816.OFFSET_LC;
 
     switch (apduBuffer[OFFSET_P1]) {
       case STORE_DATA_P1_PUBLIC:
         dst = data;
+        dataLen++;
         break;
       case STORE_DATA_P1_NDEF:
         dst = SharedMemory.ndefDataFile;
+        off = (short) ((short) apduBuffer[OFFSET_P2] * 4);
+        inOff = ISO7816.OFFSET_CDATA;
         break;
       case STORE_DATA_P1_CASH:
         dst = SharedMemory.cashDataFile;
+        dataLen++;
         break;
       default:
         ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         return;
     }
 
-    short dataLen = Util.makeShort((byte) 0x00, apduBuffer[ISO7816.OFFSET_LC]);
-
-    if (dataLen >= (short) dst.length) {
+    if ((short) (dataLen + off) > (short) dst.length) {
       ISOException.throwIt(ISO7816.SW_WRONG_DATA);
     }
 
     JCSystem.beginTransaction();
-    Util.arrayCopy(apduBuffer, ISO7816.OFFSET_LC, dst, (short) 0, (short)(dataLen + 1));
+    Util.arrayCopy(apduBuffer, inOff, dst, off, dataLen);
     JCSystem.commitTransaction();
   }
 
