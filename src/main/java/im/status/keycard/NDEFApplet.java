@@ -6,6 +6,7 @@ import javacard.framework.*;
  * The applet's main class. All incoming commands a processed by this class.
  */
 public class NDEFApplet extends Applet {
+  protected static final short NDEF_MAX_SIZE = (short) 512;
   private static final byte INS_READ_BINARY = (byte) 0xb0;
 
   private static final short FILEID_NONE = (short) 0xffff;
@@ -15,11 +16,11 @@ public class NDEFApplet extends Applet {
   private static final byte SELECT_P1_BY_FILEID  = (byte) 0x00;
   private static final byte SELECT_P2_FIRST_OR_ONLY = (byte) 0x0c;
 
-  private static final short NDEF_READ_SIZE = (short) 0xff;
+  private static final short NDEF_READ_SIZE = (short) 255;
 
   private static final byte[] NDEF_CAPS_FILE = {
-          (byte) 0x0f, (byte) 0x00, (byte) 0x0f, (byte) 0x20, (byte) 0x00, (byte) 0xff, (byte) 0x00, (byte) 0x01,
-          (byte) 0x04, (byte) 0x06, (byte) 0xe1, (byte) 0x04, (byte) 0x04, (byte) 0x00, (byte) 0x00, (byte) 0xff
+    (byte) 0x00, (byte) 0x0f, (byte) 0x20, (byte) 0x00, (byte) 0xff, (byte) 0x00, (byte) 0x01, (byte) 0x04, 
+    (byte) 0x06, (byte) 0xe1, (byte) 0x04, (byte) 0x04, (byte) 0x00, (byte) 0x00, (byte) 0xff
   };
 
   private short selectedFile;
@@ -51,8 +52,10 @@ public class NDEFApplet extends Applet {
     c9Off += (short)(bArray[c9Off] + 1); // Skip Privileges and parameter length
 
     short dataLen = Util.makeShort((byte) 0x00, bArray[c9Off]);
-    if ((dataLen > 2) && ((short)(dataLen - 2) == Util.makeShort(bArray[(short)(c9Off + 1)], bArray[(short)(c9Off + 2)]))) {
-      Util.arrayCopyNonAtomic(bArray, c9Off, SharedMemory.ndefDataFile, (short) 0, (short)(dataLen + 1));
+    c9Off++;
+
+    if ((dataLen > 2) && ((short)(dataLen - 2) == Util.makeShort(bArray[(short)(c9Off)], bArray[(short)(c9Off + 1)]))) {
+      Util.arrayCopyNonAtomic(bArray, c9Off, SharedMemory.ndefDataFile, (short) 0, dataLen);
     }
 
     register(bArray, (short) (bOffset + 1), bArray[bOffset]);
@@ -113,27 +116,29 @@ public class NDEFApplet extends Applet {
     byte[] apduBuffer = apdu.getBuffer();
 
     byte[] data;
+    short dataLen;
 
     switch(selectedFile) {
       case FILEID_NDEF_CAPS:
         data = NDEF_CAPS_FILE;
+        dataLen = (short) NDEF_CAPS_FILE.length;
         break;
       case FILEID_NDEF_DATA:
         data = SharedMemory.ndefDataFile;
+        dataLen = (short) (Util.makeShort(data[0], data[1]) + 2);
         break;
       default:
         ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         return;
     }
 
-    short dataLen = Util.makeShort((byte) 0x00, data[0]);
     short offset = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
 
     if (offset < 0 || offset >= dataLen) {
       ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     }
 
-    short le = apdu.setOutgoingNoChaining();
+    short le = apdu.setOutgoing();
     if (le > NDEF_READ_SIZE) {
       le = NDEF_READ_SIZE;
     }
@@ -141,9 +146,6 @@ public class NDEFApplet extends Applet {
     if((short)(offset + le) >= dataLen) {
       le = (short)(dataLen - offset);
     }
-
-    // skip the len byte in data
-    offset++;
 
     apdu.setOutgoingLength(le);
     apdu.sendBytesLong(data, offset, le);
