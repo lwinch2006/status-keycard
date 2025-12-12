@@ -41,7 +41,7 @@ public class KeycardApplet extends Applet {
   static final byte PIN_LENGTH = 6;
   static final byte DEFAULT_PIN_MAX_RETRIES = 3;
   static final byte KEY_PATH_MAX_DEPTH = 10;
-  static final byte PAIRING_MAX_CLIENT_COUNT = 100;
+  static final byte PAIRING_MAX_CLIENT_COUNT = 10;
   static final byte UID_LENGTH = 16;
   static final byte MAX_DATA_LENGTH = 127;
 
