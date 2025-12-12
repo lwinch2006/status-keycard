@@ -445,11 +445,17 @@ public class KeycardTest {
       cmdSet.openSecureChannel(secureChannel.getPairingIndex(), secureChannel.getPublicKey());
     }
 
+    Pairing tmpPairing = cmdSet.getPairing();
+
     // Too many paired indexes
-    response = cmdSet.pair(SecureChannel.PAIR_P1_FIRST_STEP, challenge);
+    response = sdkChannel.send(new APDUCommand(0x80, SecureChannel.INS_PAIR, SecureChannel.PAIR_P1_FIRST_STEP, SecureChannel.PAIR_P2_PERSISTENT, challenge));
     assertEquals(0x6A84, response.getSw());
 
-    // Unpair all (except the last, which will be unpaired in the tearDown phase)
+    // Ephemeral pairing
+    cmdSet.autoPair(sharedSecret);
+    assertEquals((byte) 0xff, secureChannel.getPairingIndex());
+
+    // Unpair all (except the last one, which will be unpaired in the tearDown phase)
     cmdSet.autoOpenSecureChannel();
 
     if (cmdSet.getApplicationInfo().hasCredentialsManagementCapability()) {
@@ -461,6 +467,9 @@ public class KeycardTest {
       response = cmdSet.unpair(i);
       assertEquals(0x9000, response.getSw());
     }
+
+    // ephemeral pairing is lost on reset, so we need to use a persistent one
+    cmdSet.setPairing(tmpPairing);
   }
 
   @Test
