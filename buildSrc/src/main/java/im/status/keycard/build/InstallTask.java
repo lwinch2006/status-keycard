@@ -1,11 +1,9 @@
 package im.status.keycard.build;
 
-import im.status.keycard.applet.Identifiers;
 import im.status.keycard.desktop.PCSCCardChannel;
 import im.status.keycard.globalplatform.GlobalPlatformCommandSet;
 import im.status.keycard.globalplatform.LoadCallback;
 import im.status.keycard.io.APDUException;
-import org.bouncycastle.util.encoders.Hex;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.Logger;
