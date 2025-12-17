@@ -5,11 +5,9 @@ import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import im.status.keycard.applet.*;
 import im.status.keycard.applet.Certificate;
-import im.status.keycard.desktop.LedgerUSBManager;
 import im.status.keycard.desktop.PCSCCardChannel;
 import im.status.keycard.io.APDUCommand;
 import im.status.keycard.io.APDUResponse;
-import im.status.keycard.io.CardListener;
 import javacard.framework.AID;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.crypto.ChildNumber;
@@ -61,8 +59,6 @@ public class KeycardTest {
   private static CardSimulator simulator;
   private static KeyPair caKeyPair;
 
-  private static LedgerUSBManager usbManager;
-
   private static byte[] sharedSecret;
 
   private TestSecureChannelSession secureChannel;
@@ -70,7 +66,6 @@ public class KeycardTest {
 
   private static final int TARGET_SIMULATOR = 0;
   private static final int TARGET_CARD = 1;
-  private static final int TARGET_LEDGERUSB = 2;
 
   private static final int TARGET;
 
@@ -81,9 +76,6 @@ public class KeycardTest {
         break;
       case "card":
         TARGET = TARGET_CARD;
-        break;
-      case "ledgerusb":
-        TARGET = TARGET_LEDGERUSB;
         break;
       default:
         throw new RuntimeException("Unknown target");
@@ -98,9 +90,6 @@ public class KeycardTest {
         break;
       case TARGET_CARD:
         openCardChannel();
-        break;
-      case TARGET_LEDGERUSB:
-        openLedgerUSBChannel();
         break;
       default:
         throw new IllegalStateException("Unknown target");
@@ -200,22 +189,6 @@ public class KeycardTest {
     sdkChannel = new PCSCCardChannel(apduChannel);
   }
 
-  private static void openLedgerUSBChannel() {
-    usbManager = new LedgerUSBManager(new CardListener() {
-      @Override
-      public void onConnected(im.status.keycard.io.CardChannel channel) {
-        sdkChannel = channel;
-      }
-
-      @Override
-      public void onDisconnected() {
-        throw new RuntimeException("Ledger was disconnected during test run!");
-      }
-    });
-
-    usbManager.start();
-  }
-
   private static void initCard(KeycardCommandSet cmdSet) throws Exception {
     assertEquals(0x9000, cmdSet.init("000000", "024680", "012345678901", sharedSecret, (byte) 3, (byte) 5).getSw());
     cmdSet.select().checkOK();
@@ -265,13 +238,6 @@ public class KeycardTest {
 
     if (cmdSet.getApplicationInfo().hasSecureChannelCapability()) {
       cmdSet.autoUnpair();
-    }
-  }
-
-  @AfterAll
-  static void tearDownAll() {
-    if (usbManager != null) {
-      usbManager.stop();
     }
   }
 
