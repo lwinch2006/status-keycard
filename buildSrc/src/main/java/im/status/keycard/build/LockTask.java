@@ -1,21 +1,16 @@
 package im.status.keycard.build;
 
-import im.status.keycard.applet.Identifiers;
 import im.status.keycard.applet.KeycardCommandSet;
 import im.status.keycard.desktop.PCSCCardChannel;
 import im.status.keycard.globalplatform.GlobalPlatformCommandSet;
-import im.status.keycard.globalplatform.LoadCallback;
 import im.status.keycard.globalplatform.SecureChannel;
 import im.status.keycard.io.APDUCommand;
-import im.status.keycard.io.APDUException;
-import org.bouncycastle.util.encoders.Hex;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.smartcardio.*;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.security.SecureRandom;
