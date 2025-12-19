@@ -414,7 +414,7 @@ public class KeycardTest {
     Pairing tmpPairing = cmdSet.getPairing();
 
     // Too many paired indexes
-    response = sdkChannel.send(new APDUCommand(0x80, SecureChannel.INS_PAIR, SecureChannel.PAIR_P1_FIRST_STEP, SecureChannel.PAIR_P2_PERSISTENT, challenge));
+    response = cmdSet.pair(SecureChannel.PAIR_P1_FIRST_STEP, SecureChannel.PAIR_P2_PERSISTENT, challenge);
     assertEquals(0x6A84, response.getSw());
 
     // Ephemeral pairing
