@@ -22,7 +22,14 @@ public class SecureChannel {
   public static final byte PAIR_P1_FIRST_STEP = 0x00;
   public static final byte PAIR_P1_LAST_STEP = 0x01;
 
-  // This is the maximum length acceptable for plaintext commands/responses for APDUs in short format
+  public static final byte PAIR_P2_ANY = 0x00;
+  public static final byte PAIR_P2_EPHEMERAL = 0x01;
+  public static final byte PAIR_P2_PERSISTENT = 0x02;
+
+  public static final byte PAIR_SLOT_EPHEMERAL =  (byte) 0xff;
+  public static final short PAIR_OFF_EPHEMERAL =  (short) (0xff * PAIRING_KEY_LENGTH);
+
+    // This is the maximum length acceptable for plaintext commands/responses for APDUs in short format
   public static final short SC_MAX_PLAIN_LENGTH = (short) 223;
 
   private AESKey scEncKey;
@@ -37,6 +44,7 @@ public class SecureChannel {
    * byte is 0 if the slot is free and 1 if used. The following 32 bytes are the actual key data.
    */
   private byte[] pairingKeys;
+  private byte[] ephemeralPairingKey;
 
   private short preassignedPairingOffset = -1;
   private byte remainingSlots;
@@ -57,6 +65,7 @@ public class SecureChannel {
     scMacKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, KeyBuilder.LENGTH_AES_256, false);
 
     secret = JCSystem.makeTransientByteArray((short)(SC_SECRET_LENGTH * 2), JCSystem.CLEAR_ON_DESELECT);
+    ephemeralPairingKey = JCSystem.makeTransientByteArray(PAIRING_KEY_LENGTH, JCSystem.CLEAR_ON_DESELECT);
     pairingKeys = new byte[(short)(PAIRING_KEY_LENGTH * pairingLimit)];
 
     scKeypair = new KeyPair(KeyPair.ALG_EC_FP, SC_KEY_LENGTH);
@@ -112,10 +121,18 @@ public class SecureChannel {
     mutuallyAuthenticated = false;
 
     byte[] apduBuffer = apdu.getBuffer();
+    byte[] pairKey;
+    short pairingKeyOff;
 
-    short pairingKeyOff = checkPairingIndexAndGetOffset(apduBuffer[ISO7816.OFFSET_P1]);
+    if (apduBuffer[ISO7816.OFFSET_P1] == PAIR_SLOT_EPHEMERAL) {
+      pairKey = ephemeralPairingKey;
+      pairingKeyOff = 0;
+    } else {
+      pairKey = pairingKeys;
+      pairingKeyOff = checkPairingIndexAndGetOffset(apduBuffer[ISO7816.OFFSET_P1]);
+    }
 
-    if (pairingKeys[pairingKeyOff] != 1) {
+    if (pairKey[pairingKeyOff] != 1) {
       ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     } else {
       pairingKeyOff++;
@@ -133,7 +150,7 @@ public class SecureChannel {
 
     crypto.random.generateData(apduBuffer, (short) 0, (short) (SC_SECRET_LENGTH + SC_BLOCK_SIZE));
     crypto.sha512.update(secret, (short) 0, len);
-    crypto.sha512.update(pairingKeys, pairingKeyOff, SC_SECRET_LENGTH);
+    crypto.sha512.update(pairKey, pairingKeyOff, SC_SECRET_LENGTH);
     crypto.sha512.doFinal(apduBuffer, (short) 0, SC_SECRET_LENGTH, secret, (short) 0);
     scEncKey.setKey(secret, (short) 0);
     scMacKey.setKey(secret, SC_SECRET_LENGTH);
@@ -210,17 +227,25 @@ public class SecureChannel {
    * @return the length of the reply
    */
   private short pairStep1(byte[] apduBuffer) {
-    preassignedPairingOffset = -1;
+    if (apduBuffer[ISO7816.OFFSET_P2] == PAIR_P2_EPHEMERAL) {
+      preassignedPairingOffset = PAIR_OFF_EPHEMERAL;
+    } else {
+      preassignedPairingOffset = -1;
 
-    for (short i = 0; i < (short) pairingKeys.length; i += PAIRING_KEY_LENGTH) {
-      if (pairingKeys[i] == 0) {
-        preassignedPairingOffset = i;
-        break;
+      for (short i = 0; i < (short) pairingKeys.length; i += PAIRING_KEY_LENGTH) {
+        if (pairingKeys[i] == 0) {
+          preassignedPairingOffset = i;
+          break;
+        }
       }
     }
 
     if (preassignedPairingOffset == -1) {
-      ISOException.throwIt(ISO7816.SW_FILE_FULL);
+      if (apduBuffer[ISO7816.OFFSET_P2] == PAIR_P2_PERSISTENT) {
+        ISOException.throwIt(ISO7816.SW_FILE_FULL);
+      } else {
+        preassignedPairingOffset = PAIR_OFF_EPHEMERAL;
+      }
     }
 
     crypto.sha256.update(pairingSecret, (short) 0, SC_SECRET_LENGTH);
@@ -248,11 +273,22 @@ public class SecureChannel {
       ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
     }
 
+    byte[] out;
+    short outOff;
+
+    if (preassignedPairingOffset == PAIR_OFF_EPHEMERAL) {
+      out = ephemeralPairingKey;
+      outOff = 0;
+    } else {
+      out = pairingKeys;
+      outOff = preassignedPairingOffset;
+      remainingSlots--;
+    }
+
     crypto.random.generateData(apduBuffer, (short) 1, SC_SECRET_LENGTH);
     crypto.sha256.update(pairingSecret, (short) 0, SC_SECRET_LENGTH);
-    crypto.sha256.doFinal(apduBuffer, (short) 1, SC_SECRET_LENGTH, pairingKeys, (short) (preassignedPairingOffset + 1));
-    pairingKeys[preassignedPairingOffset] = 1;
-    remainingSlots--;
+    crypto.sha256.doFinal(apduBuffer, (short) 1, SC_SECRET_LENGTH, out, (short) (outOff + 1));
+    out[outOff] = 1;
     apduBuffer[0] = (byte) (preassignedPairingOffset / PAIRING_KEY_LENGTH);
 
     preassignedPairingOffset = -1;
@@ -267,6 +303,11 @@ public class SecureChannel {
    * @param apduBuffer the APDU buffer
    */
   public void unpair(byte[] apduBuffer) {
+    if (apduBuffer[ISO7816.OFFSET_P1] == PAIR_SLOT_EPHEMERAL) {
+      ephemeralPairingKey[0] = 0;
+      return;
+    }
+
     short off = checkPairingIndexAndGetOffset(apduBuffer[ISO7816.OFFSET_P1]);
     if (pairingKeys[off] == 1) {
       Util.arrayFillNonAtomic(pairingKeys, off, PAIRING_KEY_LENGTH, (byte) 0);

@@ -1,21 +1,23 @@
 package im.status.keycard.build;
 
+import im.status.keycard.applet.KeycardCommandSet;
 import im.status.keycard.desktop.PCSCCardChannel;
 import im.status.keycard.globalplatform.GlobalPlatformCommandSet;
-import im.status.keycard.globalplatform.LoadCallback;
-import im.status.keycard.io.APDUException;
+import im.status.keycard.globalplatform.SecureChannel;
+import im.status.keycard.io.APDUCommand;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.smartcardio.*;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.security.SecureRandom;
 
 import apdu4j.pcsc.TerminalManager;
 
-public class InstallTask extends DefaultTask {
+public class LockTask extends DefaultTask {
 
   @TaskAction
   public void install() {
@@ -50,32 +52,38 @@ public class InstallTask extends DefaultTask {
     logger.info("Connected to " + cardTerminal.getName());
     PCSCCardChannel sdkChannel = new PCSCCardChannel(apduCard.getBasicChannel());
     GlobalPlatformCommandSet cmdSet = new GlobalPlatformCommandSet(sdkChannel);
+    KeycardCommandSet keycardSet = new KeycardCommandSet(sdkChannel);
 
     try {
+      logger.info("Selecting Keycard applet (don't lock if not installed)");
+      keycardSet.select().checkOK();
+
       logger.info("Selecting the ISD");
       cmdSet.select().checkOK();
       logger.info("Opening a SecureChannel");
       cmdSet.openSecureChannel(false);
-      logger.info("Deleting the old instances and package (if present)");
-      cmdSet.deleteKeycardInstancesAndPackage();
-      logger.info("Loading the new package");
-      cmdSet.loadKeycardPackage(new FileInputStream(this.getProject().file("build/javacard/im/status/keycard/javacard/keycard.cap")), new LoadCallback() {
-        @Override
-        public void blockLoaded(int loadedBlock, int blockCount) {
-          logger.info("Loaded block " + loadedBlock + "/" + blockCount);
-        }
-      });
-      logger.info("Installing the Keycard Applet");
-      cmdSet.installKeycardApplet().checkOK();
-      logger.info("Installing the NDEF Applet");
-      cmdSet.installNDEFApplet(new byte[0]).checkOK();
-      logger.info("Installing the Cash Applet");
-      cmdSet.installCashApplet().checkOK();
-      logger.info("Installing the Identifier Applet");
-      cmdSet.installIdentApplet().checkOK();
+      
+      logger.info("Changing SCP02 keys to random ones");
+      SecureRandom rand = new SecureRandom();
+      byte[] enck = new byte[16];
+      rand.nextBytes(enck);
+      byte[] mack = new byte[16];
+      rand.nextBytes(mack);
+      byte[] deck = new byte[16];
+      rand.nextBytes(deck);
+      cmdSet.putSCP02Keys(enck, mack, deck, 0, 1).checkOK();
+      
+      logger.info("Switching to SECURED");
+      Field f = cmdSet.getClass().getDeclaredField("secureChannel");
+      f.setAccessible(true);
+      SecureChannel sc = (SecureChannel) f.get(cmdSet);
+      APDUCommand cmd = new APDUCommand(0x84, 0xf0, 0x80, 0x07, new byte[0]);
+      sc.send(cmd).checkSW(0x9000, 0x6985);
+      cmd = new APDUCommand(0x84, 0xf0, 0x80, 0x0f, new byte[0]);
+      sc.send(cmd).checkSW(0x9000, 0x6985);
     } catch (IOException e) {
       throw new GradleException("I/O error", e);
-    } catch (APDUException e) {
+    } catch (Exception e) {
       throw new GradleException(e.getMessage(), e);
     }
   }

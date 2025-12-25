@@ -4,12 +4,13 @@ import javacard.framework.*;
 import javacard.security.*;
 
 import static javacard.framework.ISO7816.OFFSET_P1;
+import static javacard.framework.ISO7816.OFFSET_P2;
 
 /**
  * The applet's main class. All incoming commands a processed by this class.
  */
 public class KeycardApplet extends Applet {
-  static final short APPLICATION_VERSION = (short) 0x0301;
+  static final short APPLICATION_VERSION = (short) 0x0302;
 
   static final byte INS_GET_STATUS = (byte) 0xF2;
   static final byte INS_INIT = (byte) 0xFE;
@@ -40,13 +41,15 @@ public class KeycardApplet extends Applet {
   static final byte PIN_LENGTH = 6;
   static final byte DEFAULT_PIN_MAX_RETRIES = 3;
   static final byte KEY_PATH_MAX_DEPTH = 10;
-  static final byte PAIRING_MAX_CLIENT_COUNT = 100;
+  static final byte PAIRING_MAX_CLIENT_COUNT = 10;
   static final byte UID_LENGTH = 16;
   static final byte MAX_DATA_LENGTH = 127;
 
   static final short CHAIN_CODE_SIZE = 32;
   static final short KEY_UID_LENGTH = 32;
   static final short BIP39_SEED_SIZE = CHAIN_CODE_SIZE * 2;
+  static final short BIP32_MIN_SEED_SIZE = 16;
+  static final short BIP32_MAX_SEED_SIZE = BIP39_SEED_SIZE;
 
   static final byte GET_STATUS_P1_APPLICATION = 0x00;
   static final byte GET_STATUS_P1_KEY_PATH = 0x01;
@@ -775,19 +778,19 @@ public class KeycardApplet extends Applet {
   }
 
   /**
-   * Called internally by the loadKey method to load a key from a sequence of 64 bytes, supposedly generated according
-   * to the algorithms described in the BIP39 specifications. This way of loading keys is only supported when public
-   * key derivation is available. If not, the public key must be derived off-card and the key must be formatted in the
-   * TLV format processed by the loadKeyPair method.
+   * Called internally by the loadKey method to load a key from a sequence up to 64 bytes, possibly generated according
+   * to the algorithms described in the BIP39 or SLIP39 specifications. 
    *
    * @param apduBuffer the APDU buffer
    */
   private void loadSeed(byte[] apduBuffer) {
-    if (apduBuffer[ISO7816.OFFSET_LC] != BIP39_SEED_SIZE) {
+    short seedLen = (short) apduBuffer[ISO7816.OFFSET_LC];
+
+    if ((seedLen < BIP32_MIN_SEED_SIZE) || (seedLen > BIP32_MAX_SEED_SIZE)) {
       ISOException.throwIt(ISO7816.SW_WRONG_DATA);
     }
 
-    crypto.bip32MasterFromSeed(apduBuffer, (short) ISO7816.OFFSET_CDATA, BIP39_SEED_SIZE, apduBuffer, (short) ISO7816.OFFSET_CDATA);
+    crypto.bip32MasterFromSeed(apduBuffer, (short) ISO7816.OFFSET_CDATA, seedLen, apduBuffer, (short) ISO7816.OFFSET_CDATA);
 
     JCSystem.beginTransaction();
     isExtended = true;
@@ -1056,7 +1059,7 @@ public class KeycardApplet extends Applet {
   private void factoryReset(APDU apdu) {
     byte[] apduBuffer = apdu.getBuffer();
 
-    if ((apduBuffer[OFFSET_P1] != FACTORY_RESET_P1_MAGIC) || (apduBuffer[ISO7816.OFFSET_P2] != FACTORY_RESET_P2_MAGIC)) {
+    if ((apduBuffer[OFFSET_P1] != FACTORY_RESET_P1_MAGIC) || (apduBuffer[OFFSET_P2] != FACTORY_RESET_P2_MAGIC)) {
       ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
     }
 
@@ -1225,7 +1228,7 @@ public class KeycardApplet extends Applet {
     boolean publicOnly;
     boolean extendedPublic;
 
-    switch (apduBuffer[ISO7816.OFFSET_P2]) {
+    switch (apduBuffer[OFFSET_P2]) {
       case EXPORT_KEY_P2_PRIVATE_AND_PUBLIC:
         publicOnly = false;
         extendedPublic = false;
@@ -1326,24 +1329,34 @@ public class KeycardApplet extends Applet {
     }
 
     byte[] dst;
+    short outLen;
+    short off = (short) 1;
 
     switch (apduBuffer[OFFSET_P1]) {
       case STORE_DATA_P1_PUBLIC:
         dst = data;
+        outLen = Util.makeShort((byte) 0x00, dst[0]);
         break;
       case STORE_DATA_P1_NDEF:
         dst = SharedMemory.ndefDataFile;
+        outLen = (short) (Util.makeShort(dst[0], dst[1]) + 2);
+        //TODO: support output segmentation for NDEF
+        //off = (short) ((short) apduBuffer[OFFSET_P2] * 4);
+        off = (short) 0;
+        if (outLen > SecureChannel.SC_MAX_PLAIN_LENGTH) {
+          outLen = SecureChannel.SC_MAX_PLAIN_LENGTH;
+        }
         break;
       case STORE_DATA_P1_CASH:
         dst = SharedMemory.cashDataFile;
+        outLen = Util.makeShort((byte) 0x00, dst[0]);
         break;
       default:
         ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         return;
     }
 
-    short outLen = Util.makeShort((byte) 0x00, dst[0]);
-    Util.arrayCopyNonAtomic(dst, (short) 1, apduBuffer, SecureChannel.SC_OUT_OFFSET, outLen);
+    Util.arrayCopyNonAtomic(dst, off, apduBuffer, SecureChannel.SC_OUT_OFFSET, outLen);
 
     if (secureChannel.isOpen()) {
       secureChannel.respond(apdu, outLen, ISO7816.SW_NO_ERROR);
@@ -1366,30 +1379,35 @@ public class KeycardApplet extends Applet {
     }
 
     byte[] dst;
+    short dataLen = Util.makeShort((byte) 0x00, apduBuffer[ISO7816.OFFSET_LC]);
+    short off = (short) 0;
+    short inOff = ISO7816.OFFSET_LC;
 
     switch (apduBuffer[OFFSET_P1]) {
       case STORE_DATA_P1_PUBLIC:
         dst = data;
+        dataLen++;
         break;
       case STORE_DATA_P1_NDEF:
         dst = SharedMemory.ndefDataFile;
+        off = (short) ((short) apduBuffer[OFFSET_P2] * 4);
+        inOff = ISO7816.OFFSET_CDATA;
         break;
       case STORE_DATA_P1_CASH:
         dst = SharedMemory.cashDataFile;
+        dataLen++;
         break;
       default:
         ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         return;
     }
 
-    short dataLen = Util.makeShort((byte) 0x00, apduBuffer[ISO7816.OFFSET_LC]);
-
-    if (dataLen >= (short) dst.length) {
+    if ((short) (dataLen + off) > (short) dst.length) {
       ISOException.throwIt(ISO7816.SW_WRONG_DATA);
     }
 
     JCSystem.beginTransaction();
-    Util.arrayCopy(apduBuffer, ISO7816.OFFSET_LC, dst, (short) 0, (short)(dataLen + 1));
+    Util.arrayCopy(apduBuffer, inOff, dst, off, dataLen);
     JCSystem.commitTransaction();
   }
 

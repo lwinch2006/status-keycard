@@ -1,15 +1,17 @@
 apply plugin: 'javacard'
 
+project.ext.set("com.fidesmo.gradle.javacard.home", "./sdks/jc304_kit")
+
 buildscript {
   repositories {
     maven { url 'http://releases.marmeladburk.fidesmo.com/' }
     mavenCentral()
     maven { url 'https://jitpack.io' }
+    maven { url 'https://mvn.javacard.pro/maven/' }
   }
 
   dependencies {
     classpath 'com.fidesmo:gradle-javacard:0.2.7'
-    classpath 'com.github.status-im.status-keycard-java:desktop:64aece4'
   }
 }
 
@@ -35,7 +37,7 @@ javacard {
       aid = '0xA0:0x00:0x00:0x08:0x04:0x00:0x01:0x04'
       className = 'IdentApplet'
     }
-    version = '3.1'
+    version = '3.2'
   }
 }
 
@@ -53,13 +55,15 @@ if (!pairingPass) {
 repositories {
   mavenCentral()
   maven { url 'https://jitpack.io' }
+  maven { url 'https://mvn.javacard.pro/maven/' }
 }
 
 dependencies {
-  testCompile(files("../jcardsim/jcardsim-3.0.5-SNAPSHOT.jar"))
+  testCompile(files("./jcardsim/jcardsim-3.0.5-SNAPSHOT.jar"))
   testCompile('org.web3j:core:2.3.1')
   testCompile('org.bitcoinj:bitcoinj-core:0.14.5')
-  testCompile('com.github.status-im.status-keycard-java:desktop:3.1.2')
+  testCompile('com.github.martinpaljak:apdu4j-pcsc:25.03.11')
+  testCompile('com.github.status-im.status-keycard-java:desktop:3.1.5')
   testCompile('org.bouncycastle:bcprov-jdk15on:1.65')
   testCompile("org.junit.jupiter:junit-jupiter-api:5.1.1")
   testRuntime("org.junit.jupiter:junit-jupiter-engine:5.1.1")
@@ -73,6 +77,7 @@ test {
 }
 
 task install (type: im.status.keycard.build.InstallTask)
+task lock (type: im.status.keycard.build.LockTask) //DESTRUCTIVE: Running this task will lock you out of updating the applet!
 
 if (testTarget == 'card') {
   tasks.install.dependsOn(convertJavacard)

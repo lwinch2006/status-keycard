@@ -5,11 +5,9 @@ import com.licel.jcardsim.smartcardio.CardTerminalSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import im.status.keycard.applet.*;
 import im.status.keycard.applet.Certificate;
-import im.status.keycard.desktop.LedgerUSBManager;
 import im.status.keycard.desktop.PCSCCardChannel;
 import im.status.keycard.io.APDUCommand;
 import im.status.keycard.io.APDUResponse;
-import im.status.keycard.io.CardListener;
 import javacard.framework.AID;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.crypto.ChildNumber;
@@ -50,6 +48,8 @@ import java.util.Random;
 import static org.apache.commons.codec.digest.DigestUtils.sha256;
 import static org.junit.jupiter.api.Assertions.*;
 
+import apdu4j.pcsc.TerminalManager;
+
 @DisplayName("Test the Keycard Applet")
 public class KeycardTest {
   // Pairing key is KeycardTest
@@ -59,8 +59,6 @@ public class KeycardTest {
   private static CardSimulator simulator;
   private static KeyPair caKeyPair;
 
-  private static LedgerUSBManager usbManager;
-
   private static byte[] sharedSecret;
 
   private TestSecureChannelSession secureChannel;
@@ -68,7 +66,6 @@ public class KeycardTest {
 
   private static final int TARGET_SIMULATOR = 0;
   private static final int TARGET_CARD = 1;
-  private static final int TARGET_LEDGERUSB = 2;
 
   private static final int TARGET;
 
@@ -79,9 +76,6 @@ public class KeycardTest {
         break;
       case "card":
         TARGET = TARGET_CARD;
-        break;
-      case "ledgerusb":
-        TARGET = TARGET_LEDGERUSB;
         break;
       default:
         throw new RuntimeException("Unknown target");
@@ -96,9 +90,6 @@ public class KeycardTest {
         break;
       case TARGET_CARD:
         openCardChannel();
-        break;
-      case TARGET_LEDGERUSB:
-        openLedgerUSBChannel();
         break;
       default:
         throw new IllegalStateException("Unknown target");
@@ -180,7 +171,7 @@ public class KeycardTest {
   }
 
   private static void openCardChannel() throws Exception {
-    TerminalFactory tf = TerminalFactory.getDefault();
+    TerminalFactory tf = TerminalManager.getTerminalFactory();
 
     for (CardTerminal t : tf.terminals().list()) {
       if (t.isCardPresent()) {
@@ -196,22 +187,6 @@ public class KeycardTest {
     Card apduCard = cardTerminal.connect("*");
     apduChannel = apduCard.getBasicChannel();
     sdkChannel = new PCSCCardChannel(apduChannel);
-  }
-
-  private static void openLedgerUSBChannel() {
-    usbManager = new LedgerUSBManager(new CardListener() {
-      @Override
-      public void onConnected(im.status.keycard.io.CardChannel channel) {
-        sdkChannel = channel;
-      }
-
-      @Override
-      public void onDisconnected() {
-        throw new RuntimeException("Ledger was disconnected during test run!");
-      }
-    });
-
-    usbManager.start();
   }
 
   private static void initCard(KeycardCommandSet cmdSet) throws Exception {
@@ -263,13 +238,6 @@ public class KeycardTest {
 
     if (cmdSet.getApplicationInfo().hasSecureChannelCapability()) {
       cmdSet.autoUnpair();
-    }
-  }
-
-  @AfterAll
-  static void tearDownAll() {
-    if (usbManager != null) {
-      usbManager.stop();
     }
   }
 
@@ -443,11 +411,17 @@ public class KeycardTest {
       cmdSet.openSecureChannel(secureChannel.getPairingIndex(), secureChannel.getPublicKey());
     }
 
+    Pairing tmpPairing = cmdSet.getPairing();
+
     // Too many paired indexes
-    response = cmdSet.pair(SecureChannel.PAIR_P1_FIRST_STEP, challenge);
+    response = cmdSet.pair(SecureChannel.PAIR_P1_FIRST_STEP, SecureChannel.PAIR_P2_PERSISTENT, challenge);
     assertEquals(0x6A84, response.getSw());
 
-    // Unpair all (except the last, which will be unpaired in the tearDown phase)
+    // Ephemeral pairing
+    cmdSet.autoPair(sharedSecret);
+    assertEquals((byte) 0xff, secureChannel.getPairingIndex());
+
+    // Unpair all (except the last one, which will be unpaired in the tearDown phase)
     cmdSet.autoOpenSecureChannel();
 
     if (cmdSet.getApplicationInfo().hasCredentialsManagementCapability()) {
@@ -459,6 +433,9 @@ public class KeycardTest {
       response = cmdSet.unpair(i);
       assertEquals(0x9000, response.getSw());
     }
+
+    // ephemeral pairing is lost on reset, so we need to use a persistent one
+    cmdSet.setPairing(tmpPairing);
   }
 
   @Test
@@ -1500,6 +1477,10 @@ public class KeycardTest {
 
       // Good case with no length.
       response = cmdSet.setNDEF(Arrays.copyOfRange(ndefData, 2, ndefData.length));
+      assertEquals(0x9000, response.getSw());
+
+      // Long message with segmentation
+      response = cmdSet.setNDEF(Hex.decode("c101000001b45402656e5468697320697320612072656c61746976656c79206c6f6e672074657874207265636f72642074686174206669747320696e2061626f75742035303020627974657320736f207468617420492063616e2074657374207365676d656e746174696f6e206f66207265636f726473207573696e6720746865206e657720616e6420696d70726f766564204e444546206170706c65742e20546869732069732071756974652061206c6f6e67207465787420746f2077726974652062757420686579204920616d206865726520666f7220746869732e204920776f6e277420636f707920616e64207061737465207468652073616d6520737472696e67206f76657220616e64206f766572206265636175736520492077616e7420746f206d616b6520737572652064617461206973207265616420636f72726563746c7920616e6420746865726520617265206e6f20737472616e67652073746974636865732e2049276420616c736f206c696b6520746f206d616b6520737572652065766572797468696e6720697320617320636c6f736520746f207265616c20776f726c6420757361676520617320706f737369626c65"));
       assertEquals(0x9000, response.getSw());
     }
 
